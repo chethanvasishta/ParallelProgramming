@@ -3,9 +3,11 @@
 #include <pthread.h>
 #include <TASLock.h>
 #include <TTASLock.h>
+#include <ctime>
+#include <fstream>
+#include <sys/time.h>
 
-#define NUM_THREADS 5
-#define NUM_INC 1000
+#define NUM_INC 10000
 
 using namespace std;
 
@@ -15,49 +17,14 @@ TASLock myTASLock;
 
 void *IncrementGlobalTASLock(void* threadID)
 {
-	myTASLock.lock();
 
-	//cout << "Lock acquired; Thread ID : " << threadID << " Global Value : " << myGlobal << endl;
-	
 	for(int i = 0 ; i < NUM_INC; ++i)
+	{
+
+		myTASLock.lock();
 		++myGlobal;
-
-	//cout << "Releasing lock; Thread ID : " << threadID << " Global Value : " << myGlobal << endl;
-
-	myTASLock.unlock();
-
-	pthread_exit(NULL);
-}
-
-void TestTASLock()
-{
-	pthread_t threads[NUM_THREADS];
-	
-	cout << "Creating " << NUM_THREADS << " threads" <<  endl;
-	myGlobal = 0;
-
-	for (int i = 0 ; i < NUM_THREADS ; ++i)
-	{
-		int ret = pthread_create(&threads[i], NULL, IncrementGlobalTASLock, (void*)i);
-		if(ret)
-		{
-			cout << "Pthread create error : " << ret << endl;
-			return;
-		}
+		myTASLock.unlock();
 	}
-
-	for (int i = 0 ; i < NUM_THREADS ; ++i)
-	{
-		void* status;
-		int ret = pthread_join(threads[i], &status);
-		if(ret)
-		{
-			cout << "Pthread join error : " << ret << endl;
-			return;
-		}
-	}
-
-	cout << "After each thread incrementing the global " << NUM_INC << " times, global value is " << myGlobal << endl;
 
 	pthread_exit(NULL);
 }
@@ -66,30 +33,22 @@ TTASLock myTTASLock;
 
 void *IncrementGlobalTTASLock(void* threadID)
 {
-	myTTASLock.lock();
 
-	//cout << "Lock acquired; Thread ID : " << threadID << " Global Value : " << myGlobal << endl;
-	
 	for(int i = 0 ; i < NUM_INC; ++i)
+	{
+		myTTASLock.lock();
 		++myGlobal;
-
-	//cout << "Releasing lock; Thread ID : " << threadID << " Global Value : " << myGlobal << endl;
-
-	myTTASLock.unlock();
+		myTTASLock.unlock();
+	}
 
 	pthread_exit(NULL);
 }
 
-void TestTTASLock()
+void CreateAndJoinThreads(int numThreads, pthread_t threads[], void* (*threadFuncPtr)(void*))
 {
-	pthread_t threads[NUM_THREADS];
-	
-	cout << "Creating " << NUM_THREADS << " threads" <<  endl;
-	myGlobal = 0;
-
-	for (int i = 0 ; i < NUM_THREADS ; ++i)
+	for (int i = 0 ; i < numThreads ; ++i)
 	{
-		int ret = pthread_create(&threads[i], NULL, IncrementGlobalTASLock, (void*)i);
+		int ret = pthread_create(&threads[i], NULL, threadFuncPtr, (void*)i);
 		if(ret)
 		{
 			cout << "Pthread create error : " << ret << endl;
@@ -97,7 +56,7 @@ void TestTTASLock()
 		}
 	}
 
-	for (int i = 0 ; i < NUM_THREADS ; ++i)
+	for (int i = 0 ; i < numThreads ; ++i)
 	{
 		void* status;
 		int ret = pthread_join(threads[i], &status);
@@ -107,16 +66,67 @@ void TestTTASLock()
 			return;
 		}
 	}
+}
+
+double TestTASLock(int numThreads)
+{
+	pthread_t threads[numThreads];
+	
+	cout << "Creating " << numThreads << " threads" <<  endl;
+
+	myGlobal = 0;
+
+	struct timeval start, end;
+	gettimeofday(&start, NULL);
+
+	CreateAndJoinThreads(numThreads, threads, IncrementGlobalTASLock);
+	
+	gettimeofday(&end, NULL);
 
 	cout << "After each thread incrementing the global " << NUM_INC << " times, global value is " << myGlobal << endl;
 
-	pthread_exit(NULL);
+	return ((end.tv_sec - start.tv_sec) * 1000 + (end.tv_usec - start.tv_usec)/1000.0);
+}
+
+double TestTTASLock(int numThreads)
+{
+	pthread_t threads[numThreads];
+	
+	cout << "Creating " << numThreads << " threads" <<  endl;
+
+	myGlobal = 0;
+
+	struct timeval start, end;
+	gettimeofday(&start, NULL);
+
+	CreateAndJoinThreads(numThreads, threads, IncrementGlobalTTASLock);
+
+	gettimeofday(&end, NULL);
+
+	cout << "After each thread incrementing the global " << NUM_INC << " times, global value is " << myGlobal << endl;
+
+	return ((end.tv_sec - start.tv_sec) * 1000 + (end.tv_usec - start.tv_usec)/1000.0);
 }
 
 int main()
 {
-	//TestTASLock();
-	TestTTASLock();
-		
+	const int maxThreads = 100;
+	double TASLockTime[maxThreads], TTASLockTime[maxThreads];
+
+	for(int i = 1 ; i <= maxThreads ; ++i){
+		TASLockTime[i-1] = TestTTASLock(i);
+	}
+
+	for(int i = 1 ; i <= maxThreads ; ++i){
+		TTASLockTime[i-1] = TestTTASLock(i);
+	}
+
+	ofstream outFile;
+	outFile.open("locktimes.csv");	
+	for(int i = 0 ; i < maxThreads ; ++i){
+		outFile << (i+1) << "," << TASLockTime[i] << "," << TTASLockTime[i] << endl;
+	}
+	outFile.close();
+
 	return 0;
 }

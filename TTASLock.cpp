@@ -13,7 +13,7 @@ void TTASLock::lock()
 {
 	while(true)
 	{
-		while(!isLocked);
+		while(isLocked);
 		if(!isLocked.exchange(true))
 			return;
 	}
