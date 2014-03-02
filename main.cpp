@@ -95,10 +95,12 @@ double TestTTASLock(int numThreads)
 	return RunAndMeasureTimeHelper(numThreads, IncrementGlobal, &myTTASLock);
 }
 
-double TestBackoffLock(int numThreads)
+double TestBackoffLock(int numThreads, long *backOff)
 {
 	BackoffLock myBackoffLock;
-	return RunAndMeasureTimeHelper(numThreads, IncrementGlobal, &myBackoffLock);
+	double time = RunAndMeasureTimeHelper(numThreads, IncrementGlobal, &myBackoffLock);
+	*backOff = myBackoffLock.NumBackoffs();
+	return time;
 }
 
 
@@ -106,6 +108,7 @@ int main()
 {
 	const int maxThreads = 75;
 	double TASLockTime[maxThreads], TTASLockTime[maxThreads], BackoffLockTime[maxThreads];
+	long backOffCount[maxThreads];
 
 	for(int i = 1 ; i <= maxThreads ; ++i){
 		TASLockTime[i-1] = TestTTASLock(i);
@@ -116,15 +119,16 @@ int main()
 	}
 
 	for(int i = 1 ; i <= maxThreads ; ++i){
-		BackoffLockTime[i-1] = TestBackoffLock(i);
+		BackoffLockTime[i-1] = TestBackoffLock(i, &backOffCount[i]);		
 	}
 
 	ofstream outFile;
 	outFile.open("locktimes.csv");	
+	outFile << "ThreadCount,TASLock,TTASLock,BackoffLock,BackOffCount" << endl;
 	for(int i = 0 ; i < maxThreads ; ++i){
-		outFile << (i+1) << "," << TASLockTime[i] << "," << TTASLockTime[i] << "," << BackoffLockTime[i] << endl;
+		outFile << (i+1) << "," << TASLockTime[i] << "," << TTASLockTime[i] << "," << BackoffLockTime[i] << "," << backOffCount[i] <<  endl;
 	}
 	outFile.close();
-
+	
 	return 0;
 }

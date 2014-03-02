@@ -2,9 +2,10 @@
 #include <unistd.h> //sleep
 #include <algorithm>
 
-BackoffLock::BackoffLock()
+BackoffLock::BackoffLock() : backoff(100, 1000)
 {
 	isLocked = false;
+	numBackoffs = 9;
 }
 
 BackoffLock::~BackoffLock()
@@ -13,12 +14,13 @@ BackoffLock::~BackoffLock()
 
 void BackoffLock::lock()
 {
-	Backoff backoff(10, 100);
+	backoff.reset();
 	while(true)
 	{
 		while(isLocked);
 		if(!isLocked.exchange(true))
 			return;
+		++numBackoffs;
 		backoff.backoff();		
 	}
 }
