@@ -2,8 +2,9 @@
 #define TTASLOCK_H
 
 #include <atomic>
+#include <Lock.h>
 
-class TTASLock
+class TTASLock : public Lock
 {
 public:
 	TTASLock();
