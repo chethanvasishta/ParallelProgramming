@@ -7,6 +7,7 @@
 #include <ctime>
 #include <fstream>
 #include <sys/time.h>
+#include <AQLock.h>
 
 #define NUM_INC 10000
 
@@ -103,11 +104,17 @@ double TestBackoffLock(int numThreads, long *backOff)
 	return time;
 }
 
+double TestAQLock(int numThreads)
+{
+	AQLock myLock(numThreads);
+	double time = RunAndMeasureTimeHelper(numThreads, IncrementGlobal, &myLock);
+	return time;
+}
 
 int main()
 {
 	const int maxThreads = 75;
-	double TASLockTime[maxThreads], TTASLockTime[maxThreads], BackoffLockTime[maxThreads];
+	double TASLockTime[maxThreads], TTASLockTime[maxThreads], BackoffLockTime[maxThreads], AQLockTime[maxThreads];
 	long backOffCount[maxThreads];
 
 	for(int i = 1 ; i <= maxThreads ; ++i){
@@ -120,6 +127,10 @@ int main()
 
 	for(int i = 1 ; i <= maxThreads ; ++i){
 		BackoffLockTime[i-1] = TestBackoffLock(i, &backOffCount[i]);		
+	}
+
+	for(int i = 1 ; i <= maxThreads ; ++i){
+		AQLockTime[i-1] = TestAQLock(i);	
 	}
 
 	ofstream outFile;
