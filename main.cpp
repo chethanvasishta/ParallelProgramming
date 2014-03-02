@@ -15,10 +15,14 @@ TASLock myLock;
 void *IncrementGlobalTASLock(void* threadID)
 {
 	myLock.lock();
+
+	//cout << "Lock acquired; Thread ID : " << threadID << " Global Value : " << myGlobal << endl;
 	
 	for(int i = 0 ; i < NUM_INC; ++i)
 		++myGlobal;
-	
+
+	//cout << "Releasing lock; Thread ID : " << threadID << " Global Value : " << myGlobal << endl;
+
 	myLock.unlock();
 
 	pthread_exit(NULL);
@@ -40,7 +44,20 @@ void TestTASLock()
 		}
 	}
 
+	for (int i = 0 ; i < NUM_THREADS ; ++i)
+	{
+		void* status;
+		int ret = pthread_join(threads[i], &status);
+		if(ret)
+		{
+			cout << "Pthread join error : " << ret << endl;
+			return;
+		}
+	}
+
 	cout << "After each thread incrementing the global " << NUM_INC << " times, global value is " << myGlobal << endl;
+
+	pthread_exit(NULL);
 }
 
 int main()

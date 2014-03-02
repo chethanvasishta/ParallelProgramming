@@ -12,7 +12,7 @@ main:
 debug: maind
 	$(CC) obj/*.o $(LIBS) $(LDFLAGS) -o ParD
 maind:
-	find -name '*.cpp' -print0 | xargs -0 $(CC) -g -c $(CPPFLAGS) && mkdir -p obj && mv *.o ./obj/
+	find -name '*.cpp' -print0 | xargs -0 $(CC) -g -c $(CPPFLAGS) -DDebug && mkdir -p obj && mv *.o ./obj/
 
 #clean
 clean:
