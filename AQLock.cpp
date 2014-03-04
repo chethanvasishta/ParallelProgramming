@@ -10,6 +10,8 @@ AQLock::AQLock(int n)
 	tail = 0;
 	flag = new bool[numThreads]; //Initialize to false?
 	flag[0] = true;
+	for(int i = 1 ; i < n ; ++i)
+		flag[i] = false;
 }
 
 AQLock::~AQLock()

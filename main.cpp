@@ -113,25 +113,36 @@ double TestAQLock(int numThreads)
 
 int main()
 {
-	const int maxThreads = 75;
+	const int maxThreads = 75, numAvgs = 5;
 	double TASLockTime[maxThreads], TTASLockTime[maxThreads], BackoffLockTime[maxThreads], AQLockTime[maxThreads];
 	long backOffCount[maxThreads];
+	double cumulativeTime = 0;
 
 	for(int i = 1 ; i <= maxThreads ; ++i){
-		TASLockTime[i-1] = TestTTASLock(i);
+		cumulativeTime = 0;
+		for(int j = 0 ; j < numAvgs ; ++j)
+			cumulativeTime += TestTASLock(i);
+		TASLockTime[i-1] = cumulativeTime/numAvgs;
 	}
 
 	for(int i = 1 ; i <= maxThreads ; ++i){
-		TTASLockTime[i-1] = TestTTASLock(i);
+		cumulativeTime = 0;
+		for(int j = 0 ; j < numAvgs ; ++j)
+			cumulativeTime += TestTTASLock(i);
+		TTASLockTime[i-1] = cumulativeTime/numAvgs;
 	}
 
 	for(int i = 1 ; i <= maxThreads ; ++i){
-		BackoffLockTime[i-1] = TestBackoffLock(i, &backOffCount[i]);		
+		cumulativeTime = 0;
+		for(int j = 0 ; j < numAvgs ; ++j)
+			cumulativeTime += TestBackoffLock(i, &backOffCount[i]);
+		BackoffLockTime[i-1] = cumulativeTime/numAvgs;
 	}
 
-	for(int i = 1 ; i <= maxThreads ; ++i){
-		AQLockTime[i-1] = TestAQLock(i);	
-	}
+	//for(int i = 1 ; i <= maxThreads ; ++i){
+	//	AQLockTime[i-1] = TestAQLock(i);	
+	//}
+	//TestAQLock(5);
 
 	ofstream outFile;
 	outFile.open("locktimes.csv");	
