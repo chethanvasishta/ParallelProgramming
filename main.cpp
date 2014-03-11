@@ -23,6 +23,14 @@ struct ThreadData
 	int thread_id;
 };
 
+void *IncrementLocal(void* threadData)
+{
+	for(int i = 0 ; i < NUM_INC; ++i)
+		++myGlobal;				
+
+	pthread_exit(NULL);
+}
+
 void *IncrementAtomic(void* threadData)
 {
 	struct ThreadData* data = static_cast<ThreadData*>(threadData);
@@ -132,10 +140,16 @@ double TestAtomicTime(int numThreads)
 	return time;
 }
 
-int main()
+double TestLocalVarTime(int numThreads)
+{
+	double time = RunAndMeasureTimeHelper(numThreads, IncrementLocal, NULL);
+	return time;
+}
+
+int main(int argc, char *argv[])
 {
 	const int maxThreads = 20, numAvgs = 25;
-	double TASLockTime[maxThreads], TTASLockTime[maxThreads], BackoffLockTime[maxThreads], AQLockTime[maxThreads], AtomicTime[maxThreads];
+	double TASLockTime[maxThreads], TTASLockTime[maxThreads], BackoffLockTime[maxThreads], AQLockTime[maxThreads], AtomicTime[maxThreads], LocalTime[maxThreads];
 	long backOffCount[maxThreads];
 	double cumulativeTime = 0;
 
@@ -172,11 +186,21 @@ int main()
 		AtomicTime[i-1] = cumulativeTime/numAvgs;
 	}
 
+	for(int i = 1 ; i <= maxThreads ; ++i){
+		cumulativeTime = 0;
+		for(int j = 0 ; j < numAvgs ; ++j)
+			cumulativeTime += TestLocalVarTime(i);
+		LocalTime[i-1] = cumulativeTime/numAvgs;
+	}
+
 	ofstream outFile;
-	outFile.open("locktimes.csv");	
-	outFile << "ThreadCount,TASLock,TTASLock,BackoffLock,BackOffCount,AtomicTime" << endl;
+	std::string outFileName = "locktimes.csv";
+	if(argc > 1)
+		outFileName = argv[1];
+	outFile.open(outFileName);	
+	outFile << "ThreadCount,TASLock,TTASLock,BackoffLock,AtomicTime,LocalVarTime" << endl;
 	for(int i = 0 ; i < maxThreads ; ++i){
-		outFile << (i+1) << "," << TASLockTime[i] << "," << TTASLockTime[i] << "," << BackoffLockTime[i] << "," << backOffCount[i] << "," << AtomicTime[i] <<  endl;
+		outFile << (i+1) << "," << TASLockTime[i] << "," << TTASLockTime[i] << "," << BackoffLockTime[i] << "," <<  AtomicTime[i] << "," << LocalTime[i] << endl;
 	}
 	outFile.close();
 	
