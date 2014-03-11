@@ -8,6 +8,7 @@
 #include <fstream>
 #include <sys/time.h>
 #include <AQLock.h>
+#include <Atomic.h>
 
 #define NUM_INC 10000
 
@@ -21,6 +22,19 @@ struct ThreadData
 	Lock* myLock;
 	int thread_id;
 };
+
+void *IncrementAtomic(void* threadData)
+{
+	struct ThreadData* data = static_cast<ThreadData*>(threadData);
+	Atomic& threadLock = *(Atomic*)(data->myLock);
+
+	for(int i = 0 ; i < NUM_INC; ++i)
+	{
+		threadLock.Increment();	
+	}
+
+	pthread_exit(NULL);
+}
 
 void *IncrementGlobal(void* threadData)
 {
@@ -111,10 +125,17 @@ double TestAQLock(int numThreads)
 	return time;
 }
 
+double TestAtomicTime(int numThreads)
+{
+	Atomic myLock;
+	double time = RunAndMeasureTimeHelper(numThreads, IncrementAtomic, &myLock);
+	return time;
+}
+
 int main()
 {
-	const int maxThreads = 75, numAvgs = 5;
-	double TASLockTime[maxThreads], TTASLockTime[maxThreads], BackoffLockTime[maxThreads], AQLockTime[maxThreads];
+	const int maxThreads = 20, numAvgs = 25;
+	double TASLockTime[maxThreads], TTASLockTime[maxThreads], BackoffLockTime[maxThreads], AQLockTime[maxThreads], AtomicTime[maxThreads];
 	long backOffCount[maxThreads];
 	double cumulativeTime = 0;
 
@@ -144,11 +165,18 @@ int main()
 	//}
 	//TestAQLock(5);
 
+	for(int i = 1 ; i <= maxThreads ; ++i){
+		cumulativeTime = 0;
+		for(int j = 0 ; j < numAvgs ; ++j)
+			cumulativeTime += TestAtomicTime(i);
+		AtomicTime[i-1] = cumulativeTime/numAvgs;
+	}
+
 	ofstream outFile;
 	outFile.open("locktimes.csv");	
-	outFile << "ThreadCount,TASLock,TTASLock,BackoffLock,BackOffCount" << endl;
+	outFile << "ThreadCount,TASLock,TTASLock,BackoffLock,BackOffCount,AtomicTime" << endl;
 	for(int i = 0 ; i < maxThreads ; ++i){
-		outFile << (i+1) << "," << TASLockTime[i] << "," << TTASLockTime[i] << "," << BackoffLockTime[i] << "," << backOffCount[i] <<  endl;
+		outFile << (i+1) << "," << TASLockTime[i] << "," << TTASLockTime[i] << "," << BackoffLockTime[i] << "," << backOffCount[i] << "," << AtomicTime[i] <<  endl;
 	}
 	outFile.close();
 	
